@@ -2,6 +2,7 @@ import 'package:chatapp/services/chat_search_delegate.dart';
 import 'package:flutter/material.dart';
 import 'package:chatapp/model/chat_model.dart';
 import 'package:intl/intl.dart';
+import 'package:chatapp/widgets/record_voice_widget.dart';
 
 class ChatScreen extends StatefulWidget {
   final Chats chat;
@@ -20,6 +21,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   String lastMessage = '';
   List<Message> messages = [];
+  final VoiceRecorder _voiceRecorder = VoiceRecorder();
 
   void sendMessage(String text) {
     final newMessage = Message(
@@ -38,6 +40,24 @@ class _ChatScreenState extends State<ChatScreen> {
     });
 
     _controller.clear();
+  }
+
+  void _onVoiceMessageStart() async {
+    try {
+      await _voiceRecorder.startRecording();
+      // Show some indication to the user that recording started
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  void _onVoiceMessageEnd() async {
+    try {
+      await _voiceRecorder.stopRecording();
+      // Handle the recorded voice message
+    } catch (e) {
+      // Handle error
+    }
   }
 
   @override
@@ -98,6 +118,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     controller: _controller,
                     decoration: InputDecoration(hintText: 'Type a message'),
                   ),
+                ),
+                GestureDetector(
+                  onLongPress: _onVoiceMessageStart,
+                  onLongPressEnd: (details) => _onVoiceMessageEnd(),
+                  child: Icon(Icons.mic),
                 ),
                 IconButton(
                   icon: Icon(Icons.send),
