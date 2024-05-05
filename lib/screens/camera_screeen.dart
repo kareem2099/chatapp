@@ -1,10 +1,13 @@
-import 'dart:io';
+import 'dart:async';
+// import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
-import 'package:path_provider/path_provider.dart';
+// import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:screenshot/screenshot.dart';
-import 'package:path/path.dart' as path;
+// import 'package:path/path.dart' as path;
+import 'package:gallery_saver/gallery_saver.dart';
+// import 'package:audioplayers/audioPlayers.dart';
 
 class CameraScreen extends StatefulWidget {
   @override
@@ -15,10 +18,21 @@ class _CameraScreenState extends State<CameraScreen> {
   late ScreenshotController _screenshotController;
   late CameraController _cameraController;
   late Future<void> _initializeCameraControllerFuture;
+  late Stopwatch _stopwatch;
+  String _recordingTime = '00:00';
+  // late AudioPlayer _audioPlayer;
+  // final List<String> audio = [
+  //   'audios/camer.mp3',
+  //   'audios/vedio.mp3',
+  //   'audios/camera.wav',
+  //   'audios/vedio.wav',
+  //   // Add more audio here
+  // ];
 
   @override
   void initState() {
     super.initState();
+    // _audioPlayer = AudioPlayer();
     _screenshotController = ScreenshotController();
     _initializeCameraControllerFuture = _initializeCamera();
     _requestCameraPermission();
@@ -27,14 +41,8 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _requestCameraPermission() async {
     final permissionStatus = await Permission.camera.request();
     if (permissionStatus == PermissionStatus.granted) {
-      _initializeCamera();
-    } else {
       _showCameraPermissionDeniedMessage();
     }
-  }
-
-  void _showCameraPermissionDeniedMessage() {
-    print('camera permission was denied by user');
   }
 
   Future<void> _initializeCamera() async {
@@ -57,25 +65,113 @@ class _CameraScreenState extends State<CameraScreen> {
     return Future.error('Camera initialization failed');
   }
 
-  void _showNoCameraAvailableMessage() {
-    print('no camera  avaible');
-  }
-
-  void _showCameraNotInitializedMessage() {
-    print('no camera iniitioalized');
-  }
-
-  void _showTakePictureErrorMessage(e) {
+  void _showCameraPermissionDeniedMessage() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Error taking picture: $e'),
+        content: const Text(
+            'Access to the camera was denied. Please enable it in your settings to use this feature.'),
         backgroundColor: Colors.red,
       ),
     );
   }
 
-  void _showSaveImageErrorMessage(e) {}
-  void _showImageSavedMessage(savedImagePath) {}
+  void _showNoCameraAvailableMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('No camera is available on this device.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showCameraNotInitializedMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('The camera could not be initialized.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showTakePictureErrorMessage(e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('An error occurred while taking the picture: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showSaveImageErrorMessage(e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('An error occurred while saving the image: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showImageSavedMessage(savedImagePath) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Image has been saved successfully at the following location: $savedImagePath'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _showStartRecordingErrorMessage(e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text('An error occurred while starting the video recording: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showStopRecordingErrorMessage(e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text('An error occurred while stopping the video recording: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showSaveVideoErrorMessage(e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('An error occurred while saving the video: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showVideoSavedMessage(savedVideoPath) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Video has been saved successfully at the following location: $savedVideoPath'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
+
+  void _updateRecordingTime() {
+    Timer.periodic(Duration(seconds: 1), (Timer t) {
+      if (!_stopwatch.isRunning) {
+        t.cancel();
+      }
+      final duration = _stopwatch.elapsed;
+      setState(() {
+        _recordingTime =
+            '${duration.inMinutes.toString().padLeft(2, '0')}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}';
+      });
+    });
+  }
 
   Future<void> _takePicture() async {
     if (!_cameraController.value.isInitialized) {
@@ -83,6 +179,7 @@ class _CameraScreenState extends State<CameraScreen> {
       return;
     }
     try {
+      // await _audioPlayer.play(audio[0]); // Play the camera sound
       final XFile photo = await _cameraController.takePicture();
       _saveImage(photo.path);
     } catch (e) {
@@ -92,14 +189,72 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _saveImage(String imagePath) async {
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final fileName = path.basename(imagePath);
-      final savedImagePath = path.join(directory.path, fileName);
-      final imageFile = File(imagePath);
-      await imageFile.copy(savedImagePath);
-      _showImageSavedMessage(savedImagePath);
+      await GallerySaver.saveImage(imagePath, albumName: 'cutie');
+      _showImageSavedMessage(imagePath);
     } catch (e) {
       _showSaveImageErrorMessage(e);
+    }
+  }
+
+  Future<void> _startRecording() async {
+    if (!_cameraController.value.isInitialized) {
+      _showCameraNotInitializedMessage();
+      return;
+    }
+    try {
+      // await _audioPlayer.play(audio[1]); // Play the camera sound
+      await _cameraController.startVideoRecording();
+      _stopwatch = Stopwatch()..start();
+      _updateRecordingTime();
+    } catch (e) {
+      _showStartRecordingErrorMessage(e);
+    }
+  }
+
+  Future<void> _stopRecording() async {
+    if (!_cameraController.value.isInitialized) {
+      _showCameraNotInitializedMessage();
+      return;
+    }
+    try {
+      XFile video = await _cameraController.stopVideoRecording();
+      _stopwatch.stop();
+      _saveVideo(video.path);
+    } catch (e) {
+      _showStopRecordingErrorMessage(e);
+    }
+  }
+
+  // Future<void> _playSound(String soundPath) async {
+  //   try {
+  //     await _audioPlayer.play(Source.asset(soundPath));
+  //   } catch (e) {
+  //     // Handle error here
+  //   }
+  // }
+
+  Future<void> _saveVideo(String videoPath) async {
+    try {
+      await GallerySaver.saveVideo(videoPath, albumName: 'smile');
+      _showVideoSavedMessage(videoPath);
+    } catch (e) {
+      _showSaveVideoErrorMessage(e);
+    }
+  }
+
+  Future<void> _toggleFlash() async {
+    if (!_cameraController.value.isInitialized) {
+      _showCameraNotInitializedMessage();
+      return;
+    }
+    try {
+      if (_cameraController.value.flashMode == FlashMode.off) {
+        await _cameraController.setFlashMode(FlashMode.torch);
+      } else {
+        await _cameraController.setFlashMode(FlashMode.off);
+      }
+    } catch (e) {
+      // Handle any errors here
     }
   }
 
@@ -115,14 +270,38 @@ class _CameraScreenState extends State<CameraScreen> {
             controller: _screenshotController,
             child: Scaffold(
               appBar: AppBar(title: Text('Camera UI')),
-              body: CameraPreview(_cameraController),
-              floatingActionButton: FloatingActionButton(
-                child: Icon(Icons.camera),
-                onPressed: () async {
-                  final imagePath = await _takePicture();
-
-                  // Optionally, save the image to the gallery
-                },
+              body: Stack(
+                children: [
+                  CameraPreview(_cameraController),
+                  Positioned(
+                    top: 16.0,
+                    right: 16.0,
+                    child: Text(
+                      _recordingTime,
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontSize: 18.0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              floatingActionButton: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  FloatingActionButton(
+                    child: Icon(Icons.flash_on),
+                    onPressed: _toggleFlash,
+                  ),
+                  GestureDetector(
+                    onLongPress: _startRecording,
+                    onLongPressEnd: (details) => _stopRecording(),
+                    child: FloatingActionButton(
+                      child: Icon(Icons.camera),
+                      onPressed: _takePicture,
+                    ),
+                  ),
+                ],
               ),
             ),
           );
@@ -138,6 +317,7 @@ class _CameraScreenState extends State<CameraScreen> {
     if (_cameraController.value.isInitialized) {
       _cameraController.dispose();
     }
+
     super.dispose();
   }
 }
