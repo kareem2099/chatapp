@@ -1,0 +1,9 @@
+{
+  "@@locale": "ar_EG",
+  "welcome": "مرحبا",
+  "username": "اسم المستخدم",
+  "password": "كلمة المرور",
+  "logIn": "تسجيل الدخول",
+  "dont_have_account": "ليس لديك حساب؟",
+  "signUp": "سجل"
+}

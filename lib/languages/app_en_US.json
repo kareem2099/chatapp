@@ -1,0 +1,9 @@
+{
+  "@@locale": "en_US",
+  "welcome": "Welcome",
+  "username": "Username",
+  "password": "Password",
+  "login": "LogIn",
+  "dont_have_account": "Don't have an account?",
+  "signup": "SignUp"
+}
